@@ -1,0 +1,711 @@
+<div id="checkout_wrapper">
+  <div class="margin clearfix">
+
+    <div class="panel" [class.disabled]="review_complete" [class.active]="!review_complete">
+      <div class="panel-heading">
+        <h2><span (click)="onShowSummary(showSummary)" class="step"><i class="fa fa-th-list"></i></span>Order Summary</h2>
+        <button *ngIf="checkout.OrderSummary && !review_complete" (click)="onModify()" [disabled]="cart_complete" class="panel-modify-cart"><span>{{modify_state}}</span></button>
+        <button *ngIf="checkout.OrderSummary && !review_complete" (click)="onClearCart()" [disabled]="cart_complete" class="panel-empty-cart"><span>Empty Shopping Cart</span></button>
+      </div>
+      <div class="panel-body clearfix" [class.show]="showSummary === true">
+        <h3 *ngIf="checkout.Error" class="error">{{checkout.Description}}</h3>
+        <table *ngIf="checkout.OrderSummary" class="order-summary">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price</th>
+              <th>Total Price</th>
+              <th *ngIf="user_details_object.AllowTaxExempt" style="text-align: center">Tax Exempt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let cart_item of checkout.OrderSummary.Cart_Items; let idx=index" [id]="cart_item.ItemId" class="cart_item">
+              <td>
+                <a href="{{cart_item.Link}}" class="item-title" target="_blank">{{cart_item.Title}}<span class="item-desc">{{cart_item.Description}}</span></a>
+              </td>
+              <td class="item-qty">
+                <span [class.hide]="showModify" (keyup)="0" let qty>{{cart_item.Qty}}</span><input type="number" [class.hide]="!showModify" [(ngModel)]="cart_item.Qty" (keydown)="setCurrentQty(idx)" (keyup)="inputUpdateCart(idx, cart_item.ItemId, cart_item.Qty)"><i [class.hide]="!showModify" (click)="addItem(cart_item.ItemId, cart_item.Qty)" class="fa fa-plus-circle"></i><i [class.hide]="!showModify" (click)="removeItem(cart_item.ItemId, cart_item.Qty)" class="fa fa-minus-circle"></i><i [class.hide]="!showModify" (click)="onDeleteCartItem(cart_item.ItemId)" class="fa fa-trash"></i>
+              </td>
+              <td class="item-unit-price">
+                {{cart_item.Unit_Price | currency:'USD':true:'.2-2'}}
+              </td>
+              <td class="item-sub-price">
+                {{cart_item.Sub_Total | currency:'USD':true:'.2-2'}}
+              </td>
+              <td *ngIf="user_details_object.AllowTaxExempt" class="item-tax-exempt" style="text-align: center">
+                <input type="checkbox" [disabled]="!showModify" [value]="cart_item.ItemId" [checked]="cart_item.IsTaxExempt" (change)="setTaxExempt($event.target.value, !cart_item.IsTaxExempt)">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="clearfix">
+          <table *ngIf="checkout.OrderSummary" class="order-summary-total">
+            <tbody>
+              <tr>
+                <th>Subtotal</th>
+                <td id="checkout_subtotal">{{checkout.OrderSummary.SubTotal | currency:'USD':true:'.2-2'}}</td>
+              </tr>
+              <tr *ngIf="display_coupon_code">
+                <th>Discount</th>
+                <td>
+                  <span>{{checkout.OrderSummary.CouponDiscountText}}</span>
+                </td>
+              </tr>
+              <tr>
+                <th>Shipping</th>
+                <td id="checkout_shipping">
+                  <span [class.value-na]="checkout.OrderSummary.ShippingFee <= 0">{{checkout.OrderSummary.ShippingText}}</span>
+                </td>
+              </tr>
+              <tr *ngIf="checkout.OrderSummary.ShowImportFeePlaceHolder">
+                <th>Import Fees</th>
+                <td>
+                  <span>{{checkout.OrderSummary.ImportFeeText}}</span>
+                </td>
+              </tr>
+              <tr>
+                <th>Tax</th>
+                <td id="checkout_tax">
+                  <span [class.value-na]="checkout.OrderSummary.TaxRate <= 0">{{checkout.OrderSummary.TaxText}}</span>
+                </td>
+              </tr>
+              <tr>
+                <th *ngIf="!has_custom_product">Total</th>
+                <th *ngIf="has_custom_product">Estimated Total</th>
+                <td id="checkout_total">
+                  <span id="checkout_total_node" [class.value-na]="checkout.Total <= 0">{{checkout.OrderSummary.TotalText}}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel" id="step-1" [class.active]="!review_complete" [class.disabled]="review_complete" [class.completed]="isAuth()">
+      <div class="panel-heading">
+        <h2><span class="step"><span>1</span></span>Account Details</h2>
+        <span class="checkout_status" *ngIf="isReturnCustomerAuth()">Welcome <b>{{return_cust_email}}</b></span>
+        <span class="checkout_status" *ngIf="isGuestCustomerAuth()">Checking out As Guest  <b>{{guest_cust_email}}</b></span>
+        <button class="panel-edit" title="Edit" (click)="toggleLoginPanel(!showLoginPanel)"><span>Edit</span></button>
+      </div>
+
+      <div class="panel-body clearfix" [class.show]="showLoginPanel" [class.hide]="hideLoginPanel">
+        <div class="panel-3-left">
+          <div class="login-returning">
+            <h3>I'm a Returning Customer</h3>
+            <p *ngIf="signin_error" class="signin-error">{{signin_error}}</p>
+            <form [ngFormModel]="returnCustomerForm" (ngSubmit)="onSignin(returnCustomerForm)">
+              <div>
+                <input type="text" placeholder="Email Address or Username" [ngFormControl]="returnCustomerForm.controls['email']">
+              </div>
+              <div>
+                <input type="password" placeholder="Password" [ngFormControl]="returnCustomerForm.controls['password']">
+              </div>
+              <div>
+                <input type="submit" value="Log In">
+              </div>
+            </form>
+            <div *ngIf="isReturnCustomerAuth()">
+              <button class="add_address" (click)="userLogout()">Logout</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-3-mid">
+          <h3>I'm a New Customer</h3>
+          <p>Register with us for a faster checkout, to track the status of our order and more</p><br>
+          <p *ngIf="new_signin_success" class="signin-success">{{new_signin_success}}</p>
+          <p *ngIf="new_signin_error" class="signin-error">{{new_signin_error}}</p>
+          <p *ngIf="new_signin_error_msg" class="signin-error">{{new_signin_error_msg}}</p>
+          <p *ngIf="new_signin_error_desc" class="signin-error">{{new_signin_error_desc}}</p>
+          <form [ngFormModel]="newCustomerForm" (ngSubmit)="onRegister()">
+            <div>
+              <input type="email" placeholder="Email Address" [ngFormControl]="newCustomerForm.controls['Email']">
+            </div>
+            <div>
+              <p *ngIf="new_signin_error_pw" class="signin-error">{{new_signin_error_pw}}</p>
+              <input type="password" placeholder="Password" [ngFormControl]="newCustomerForm.controls['Password']">
+            </div>
+            <div>
+              <p *ngIf="new_signin_error_cp" class="signin-error">{{new_signin_error_cp}}</p>
+              <input type="password" placeholder="Confirm Password" [ngFormControl]="newCustomerForm.controls['ConfirmPassword']">
+            </div>
+            <div>
+              <input type="submit" value="Register">
+            </div>
+          </form>
+        </div>
+        <div class="panel-3-right">
+          <div class="login-guest">
+            <h3>Checkout as Guest</h3>
+            <p *ngIf="guest_signin_error" class="signin-error">{{guest_signin_error}}</p>
+            <p>If email address already has an account you will be required to login as a registered user.</p>
+            <br>
+            <form [ngFormModel]="guestCustomerForm" (ngSubmit)="guestCheckout()">
+              <div>
+                <input type="email" placeholder="Email Address" [ngFormControl]="guestCustomerForm.controls['Email']">
+              </div>
+              <div>
+                <input type="submit" value="Continue">
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="step-2" [class.active]="isAuth() && !review_complete && checkout.OrderSummary" [class.disabled]="!isAuth() || review_complete || !checkout.OrderSummary" [class.completed]="shipping_complete && isAuth()">
+      <div class="panel-heading">
+        <h2><span class="step"><span>2</span></span>Shipping Details</h2><span class="shipping_status" *ngIf="ship_status">{{ship_status}}</span><span class="shipping_status" *ngIf="shipping_method_string">{{shipping_method_string}}</span><span class="shipping_status" *ngIf="ups_number">Account# {{ups_number}}</span><span class="shipping_status" *ngIf="ups_billing_method_string">{{ups_billing_method_string}}</span>
+        <span class="shipping_status" *ngIf="fedex_number">Account# {{fedex_number}}</span><span class="shipping_status" *ngIf="fedex_billing_method_string">{{fedex_billing_method_string}}</span>
+        <button (click)="toggleShippingPanel(!showShippingPanel)" class="panel-edit" title="Edit"><span>Edit</span></button>
+      </div>
+      <div class="panel-body clearfix" [ngClass]="{show: showShippingPanel, hide: hideShippingPanel}">
+        <div class="panel-left">
+          <div *ngIf="isReturnCustomerAuth()" class="shipping-form">
+            <h3>Choose a Shipping Address or Add a New Address</h3>
+            <form class="clearfix" *ngIf="!show_add_address">
+              <div *ngFor="let address of shipping_address.ShippingAddresses; let ship_idx=index" class="shipping-address clearfix">
+                <div class="shipping-button">
+                  <input type="radio" name="shipping_address" [value]="ship_idx" (change)="onChangeAddress(address, $event.target.value)" [checked]="ship_idx===selected_ship_address.option">
+                </div>
+                <div class="shipping-info">
+                  <button class="edit_address" (click)="onEditShip(address, ship_idx)"></button>
+                  <p><strong>{{address.FName}} {{address.LName}}</strong></p>
+                  <p>{{address.Phone | phonenumber}} <span *ngIf="address.Phone_Ext">ext. {{address.Phone_Ext}}</span></p>
+                  <p>{{address.Company}}</p>
+                  <p>{{address.Address1}}</p>
+                  <p>{{address.Address2}}</p>
+                  <p>{{address.City}}, {{address.State}} {{address.Zip}}</p>
+                </div>
+              </div>
+            </form>
+            <div *ngIf="edit_ship_address" class="edit-ship-add">
+              <h3>Edit Shipping Address</h3>
+              <div>
+                <input type="text" [(ngModel)]="selected_shipping.address.FName" [class.error]="shipping_form_errors.FName" [placeholder]="shipping_form_errors.FName_string">
+                <input type="text" [(ngModel)]="selected_shipping.address.LName" [placeholder]="shipping_form_errors.LName_string" [class.error]="shipping_form_errors.LName">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="selected_shipping.address.Phone" [class.error]="shipping_form_errors.Phone" [placeholder]="shipping_form_errors.Phone_string">
+                <input type="text" [(ngModel)]="selected_shipping.address.Phone_Ext" [placeholder]="shipping_form_errors.Phone_Ext_string">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="selected_shipping.address.Company" [placeholder]="shipping_form_errors.Company_string">
+              </div>
+              <div>
+                <input type="text" class="ship_address" [(ngModel)]="selected_shipping.address.Address1" [placeholder]="shipping_form_errors.Address1_string" [class.error]="shipping_form_errors.Address1">
+              </div>
+              <div>
+                <input type="text" class="ship_address" [(ngModel)]="selected_shipping.address.Address2" [placeholder]="shipping_form_errors.Address2_string">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="selected_shipping.address.City" [placeholder]="shipping_form_errors.City_string" [class.error]="shipping_form_errors.City">
+                <select name="states" [(ngModel)]="selected_shipping.address.State" [class.error]="shipping_form_errors.State">
+                  <option *ngFor="let state of states" [value]="state.key" [disabled]="state.disabled">{{state.value}}</option>
+                </select>
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="selected_shipping.address.Zip" [placeholder]="shipping_form_errors.Zip_string" [class.error]="shipping_form_errors.Zip">
+              </div>
+              <button class="add_address" (click)="onSaveEditAddress()">Save Address</button>
+              <button class="add_address btn-text pull-left" (click)="cancelEditShip()">Cancel</button>
+            </div>
+            <button class="add_address pull-left" *ngIf="!show_add_address" (click)="showAddAddress(show_add_address)">Add New Shipping Address</button>
+            <form *ngIf="show_add_address" [ngFormModel]="addShipAddressForm" (ngSubmit)="onAddShipAddress(show_add_address)">
+              <div class="add-new-ship-address clearfix">
+                <h3>Add New Shipping Address</h3>
+                <div>
+                  <input type="text" id="ship_firstname" [placeholder]="shipping_form_errors.FName_string" [ngFormControl]="addShipAddressForm.controls['firstname']" [class.error]="shipping_form_errors.FName">
+                  <input type="text" id="ship_lastname" [placeholder]="shipping_form_errors.LName_string" [ngFormControl]="addShipAddressForm.controls['lastname']" [class.error]="shipping_form_errors.LName">
+                </div>
+                <div>
+                  <input type="text" [ngFormControl]="addShipAddressForm.controls['phone']" [class.error]="shipping_form_errors.Phone" [placeholder]="shipping_form_errors.Phone_string">
+                  <input type="text" [ngFormControl]="addShipAddressForm.controls['phoneext']" [placeholder]="shipping_form_errors.Phone_Ext_string">
+                </div>
+                <div>
+                  <input type="text" id="ship_company" placeholder="Company" [ngFormControl]="addShipAddressForm.controls['company']">
+                </div>
+                <div>
+                  <input type="text" id="ship_address_1" class="ship_address" [placeholder]="shipping_form_errors.Address1_string" [ngFormControl]="addShipAddressForm.controls['address1']" [class.error]="shipping_form_errors.Address1">
+                </div>
+                <div>
+                  <input type="text" id="ship_address_2" class="ship_address" placeholder="Address Line 2" [ngFormControl]="addShipAddressForm.controls['address2']">
+                </div>
+                <div>
+                  <input type="text" id="ship_city" [placeholder]="shipping_form_errors.City_string" [ngFormControl]="addShipAddressForm.controls['city']" [class.error]="shipping_form_errors.City">
+                  <select id="ship_state" name="states" [ngFormControl]="addShipAddressForm.controls['state']" [class.error]="shipping_form_errors.State">
+                    <option *ngFor="let state of states" [value]="state.key" [disabled]="state.disabled">{{state.value}}</option>
+                  </select>
+                </div>
+                <div>
+                  <input type="text" id="ship_zip" [placeholder]="shipping_form_errors.Zip_string" [ngFormControl]="addShipAddressForm.controls['zip']" [class.error]="shipping_form_errors.Zip">
+                </div>
+                <input class="add_address pull-left" type="submit" value="Save Address">
+                <button class="add_address btn-text pull-left" *ngIf="show_add_address" (click)="showAddAddress(show_add_address)">Cancel</button>
+              </div>
+            </form>
+          </div>
+          <div *ngIf="isGuestCustomerAuth()" class="shipping-form">
+            <form *ngIf="show_guest_address_form" (ngSubmit)="onSaveGuestShipAddress(show_guest_address_form)">
+              <div class="add-new-ship-address clearfix">
+                <h3>Enter Shipping Address</h3>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.FName_string" [(ngModel)]="guestShippingAddress.FName" [class.error]="shipping_form_errors.FName">
+                  <input type="text" [placeholder]="shipping_form_errors.LName_string" [(ngModel)]="guestShippingAddress.LName" [class.error]="shipping_form_errors.LName">
+                </div>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.Phone_string" [(ngModel)]="guestShippingAddress.Phone" [class.error]="shipping_form_errors.Phone">
+                  <input type="text" [placeholder]="shipping_form_errors.Phone_Ext_string" [(ngModel)]="guestShippingAddress.Phone_Ext">
+                </div>
+                <div>
+                  <input type="text" placeholder="Company" [(ngModel)]="guestShippingAddress.Company">
+                </div>
+                <div>
+                  <input type="text" class="ship_address" [placeholder]="shipping_form_errors.Address1_string" [(ngModel)]="guestShippingAddress.Address1" [class.error]="shipping_form_errors.Address1">
+                </div>
+                <div>
+                  <input type="text" class="ship_address" placeholder="Address Line 2" [(ngModel)]="guestShippingAddress.Address2">
+                </div>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.City_string" [(ngModel)]="guestShippingAddress.City" [class.error]="shipping_form_errors.City">
+                  <select name="states" [(ngModel)]="guestShippingAddress.State" [class.error]="shipping_form_errors.State">
+                    <option *ngFor="let state of states" [value]="state.key" [disabled]="state.disabled">{{state.value}}</option>
+                  </select>
+                </div>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.Zip_string" [(ngModel)]="guestShippingAddress.Zip" [class.error]="shipping_form_errors.Zip">
+                </div>
+                <input class="add_address pull-left" type="submit" value="Save Address">
+              </div>
+            </form>
+            <div *ngIf="!show_guest_address_form">
+              <h3>Shipping Address</h3>
+              <p><strong>{{guestShippingAddress.FName}} {{guestShippingAddress.LName}}</strong></p>
+              <p>{{guestShippingAddress.Phone | phonenumber}} <span *ngIf="guestShippingAddress.Phone_Ext">ext. {{guestShippingAddress.Phone_Ext}}</span></p>
+              <p>{{guestShippingAddress.Company}}</p>
+              <p>{{guestShippingAddress.Address1}}</p>
+              <p>{{guestShippingAddress.Address2}}</p>
+              <p>{{guestShippingAddress.City}}, {{guestShippingAddress.State}} {{guestShippingAddress.Zip}}</p>
+              <br>
+              <button class="add_address" (click)="onEditGuestShip(show_guest_edit_address_form)">Edit Shipping Address</button>
+            </div>
+            <form *ngIf="show_guest_edit_address_form" (ngSubmit)="onEditGuestShipAddress(show_guest_edit_address_form)">
+              <div class="add-new-ship-address clearfix">
+                <h3>Enter Shipping Address</h3>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.FName_string" [(ngModel)]="guestShippingAddress.FName" [class.error]="shipping_form_errors.FName">
+                  <input type="text" [placeholder]="shipping_form_errors.LName_string" [(ngModel)]="guestShippingAddress.LName" [class.error]="shipping_form_errors.LName">
+                </div>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.Phone_string" [(ngModel)]="guestShippingAddress.Phone" [class.error]="shipping_form_errors.Phone">
+                  <input type="text" [placeholder]="shipping_form_errors.Phone_Ext_string" [(ngModel)]="guestShippingAddress.Phone_Ext">
+                </div>
+                <div>
+                  <input type="text" placeholder="Company" [(ngModel)]="guestShippingAddress.Company">
+                </div>
+                <div>
+                  <input type="text" class="ship_address" [placeholder]="shipping_form_errors.Address1_string" [(ngModel)]="guestShippingAddress.Address1" [class.error]="shipping_form_errors.Address1">
+                </div>
+                <div>
+                  <input type="text" class="ship_address" placeholder="Address Line 2" [(ngModel)]="guestShippingAddress.Address2">
+                </div>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.City_string" [(ngModel)]="guestShippingAddress.City" [class.error]="shipping_form_errors.City">
+                  <select name="states" [(ngModel)]="guestShippingAddress.State" [class.error]="shipping_form_errors.State">
+                    <option *ngFor="let state of states" [value]="state.key" [disabled]="state.disabled">{{state.value}}</option>
+                  </select>
+                </div>
+                <div>
+                  <input type="text" [placeholder]="shipping_form_errors.Zip_string" [(ngModel)]="guestShippingAddress.Zip" [class.error]="shipping_form_errors.Zip">
+                </div>
+                <input class="add_address pull-left" type="submit" value="Save Address">
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="panel-right">
+          <div>
+            <div *ngIf="!has_custom_product">
+              <h3>Coupon Code</h3>
+              <div *ngIf="!display_coupon_code">
+                <input type="text" placeholder="Enter Coupon Code" [(ngModel)]="coupon_code.EnteredCouponCode" (keyup)="setCouponCode($event.target.value)">
+                <button class="add_address btn-text pull-left" (click)="applyCouponCode()">Apply Coupon Code <i class="fa fa-chevron-right"></i></button>
+              </div>
+              <div *ngIf="display_coupon_code">
+                <h3>{{checkout.Coupon.CouponCode}} has been applied {{checkout.Coupon.DiscountLog}}</h3>
+                <button class="add_address btn-txt pull-left" (click)="changeCouponCode()">{{checkout.Coupon.CouponAddEditButtonText}} <i class="fa fa-chevron-right"></i></button>
+              </div>
+            </div>
+          </div>
+          <br>
+          <div *ngIf="on_load_ship_methods">
+            <h3>Loading Shipping Methods...</h3>
+          </div>
+          <div *ngIf="new_shipping_options && !on_load_ship_methods">
+            <h3>Choose A Shipping Method</h3>
+            <form *ngIf="new_shipping_options && !on_load_ship_methods">
+              <div *ngFor="let ship_option of shipping_methods; let option_idx = index">
+                <div *ngIf="ship_option.ServiceCode != 'BT'">
+                  <input type="radio" name="shipping_method" [value]="option_idx" (change)="onShipChangeMethod(ship_option.index, option_idx, ship_option.ServiceCode)" [checked]="selected_shipping_method === option_idx">
+                  <label class="shipping_opt_label">{{ship_option.Name}} <span *ngIf="ship_option.CostText != '$0.00'">{{ship_option.CostText}}</span> <span [class.tooltip]="ship_option.ServiceCode != 'BT'"><i class="fa fa-info-circle"></i><span *ngIf="ship_option.ServiceCode === 'STD'" class="tooltiptext">{{std_tool_tip}}</span><span *ngIf="ship_option.ServiceCode === '02'" class="tooltiptext">{{exp_tool_tip}}</span><span *ngIf="ship_option.ServiceCode === 'CP'" class="tooltiptext">{{cp_tool_tip}}</span></span></label>
+                </div>
+                <div *ngIf="ship_option.ServiceCode === 'BT'">
+                  <input type="radio" name="shipping_method" [value]="option_idx" (change)="onBillToSelect(ship_option.index, option_idx, ship_option.ServiceCode)" [checked]="selected_shipping_method === option_idx">
+                  <label class="shipping_opt_label">{{ship_option.Name}} <span class="tooltip"><i class="fa fa-info-circle"></i><span class="tooltiptext" *ngIf="ship_option.Name === 'Bill To My UPS Account'">{{ups_tool_tip}}</span><span class="tooltiptext" *ngIf="ship_option.Name != 'Bill To My UPS Account'">{{fedex_tool_tip}}</span></span></label>
+                  <div *ngIf="show_ups_shipping_acct_field && ship_option.Name === 'Bill To My UPS Account'" class="left-20 top-10">
+                    <div>
+                      <input type="text" placeholder="UPS Account Number" (keyup)="onUpsBilling(ship_option.index, ups_billing_info.ServiceName)" [(ngModel)]="ups_number">
+                    </div>
+                    <div *ngFor="let ups_shipping_method of ups_shipping_methods; let ups_idx = index">
+                      <input type="radio" [id]="ups_shipping_method.id" [name]="ups_shipping_method.name" [value]="ups_shipping_method.value" (change)="onUpsBilling(ship_option.index, ups_shipping_method.value)">
+                      <label class="shipping_opt_label">{{ups_shipping_method.label}}</label>
+                    </div>
+                  </div>
+
+                  <div *ngIf="show_fedex_shipping_acct_field && ship_option.Name === 'Bill To My FedEx Account'" class="left-20 top-10">
+                    <div>
+                      <input type="text" placeholder="FedEx Account Number" (keyup)="onFedExBilling(ship_option.index, fedex_billing_info.ServiceName)" [(ngModel)]="fedex_number">
+                    </div>
+                    <div *ngFor="let fedex_shipping_method of fedex_shipping_methods; let fedex_idx = index">
+                      <input type="radio" [id]="fedex_shipping_method.id" [name]="fedex_shipping_method.name" [value]="fedex_shipping_method.value" (change)="onFedExBilling(ship_option.index, fedex_shipping_method.value)">
+                      <label class="shipping_opt_label">{{fedex_shipping_method.label}}</label>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <div>
+                <p *ngIf="ship_method_error" class="error">{{ship_method_error_string}}</p>
+                <button class="use_address top-20" (click)="saveShipMethod()">Save Shipping Method</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="step-3" [class.completed]="billing_complete && isAuth()" [class.active]="shipping_complete && isAuth() && !review_complete && checkout.OrderSummary" [class.disabled]="!shipping_complete || review_complete || !checkout.OrderSummary">
+      <div class="panel-heading">
+        <h2><span class="step"><span>3</span></span>Billing Details</h2><span class="shipping_status" *ngIf="bill_status.length > 0">{{bill_status}}</span><span class="shipping_status">{{payment_type_string}}</span><span *ngIf="po_input.length > 0" class="shipping_status">PO# {{po_input}}</span>
+        <button class="panel-edit" title="Edit" (click)="toggleBillingPanel(!showBillingPanel)"><span>Edit</span></button>
+      </div>
+      <div class="panel-body clearfix" [ngClass]="{ show: showBillingPanel, hide: hideBillingPanel }">
+        <div class="panel-left">
+          <div *ngIf="isReturnCustomerAuth() || isGuestCustomerAuth()">
+            <h3>Current Billing Address</h3>
+            <div *ngIf="!edit_bill_address && billing_address" class="current_billing_address">
+              <p><strong>{{billing_address.FName}} {{billing_address.LName}}</strong></p>
+              <p>{{billing_address.Company}}</p>
+              <p>{{billing_address.Address1}}</p>
+              <p>{{billing_address.Address2}}</p>
+              <p>{{billing_address.City}}, {{billing_address.State}} {{billing_address.Zip}}</p>
+              <p>{{billing_address.ContactPhone | phonenumber}}</p>
+              <p>{{billing_address.Phone | phonenumber}}</p>
+              <br>
+              <button class="add_address" (click)="onEditBillAddress()">Edit Billing Address</button>
+            </div>
+            <div *ngIf="edit_bill_address" class="edit_billing_address">
+              <input let same_as_ship class="bottom-20" type="checkbox" id="same-as-ship-add" [value]="same_as_ship.value"  (change)="billSameAsShip()" [checked]="same_as_ship.value === true"><label for="same-as-ship-add">Same As Shipping</label>
+              <div>
+                <input type="text" [(ngModel)]="billing_address.FName" [placeholder]="billing_form_errors.FName_string" [class.error]="billing_form_errors.FName">
+                <input type="text" [(ngModel)]="billing_address.LName" [placeholder]="billing_form_errors.LName_string" [class.error]="billing_form_errors.LName">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="billing_address.Phone" [placeholder]="billing_form_errors.Phone_string" [class.error]="billing_form_errors.Phone">
+                <input type="text" [(ngModel)]="billing_address.Phone_Ext" [placeholder]="billing_form_errors.Phone_Ext_string">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="billing_address.ContactPhone" [placeholder]="billing_form_errors.ContactPhone_string" >
+                <input type="text" [(ngModel)]="billing_address.ContactPhoneExt" [placeholder]="billing_form_errors.ContactPhoneExt_string">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="billing_address.Fax" [placeholder]="billing_form_errors.Fax_string">
+                <input type="text" [(ngModel)]="billing_address.Company" [placeholder]="billing_form_errors.Company_string">
+              </div>
+              <div>
+                <input type="text" class="bill_address" [(ngModel)]="billing_address.Address1" [placeholder]="billing_form_errors.Address1_string" [class.error]="billing_form_errors.Address1">
+              </div>
+              <div>
+                <input type="text" class="bill_address" [(ngModel)]="billing_address.Address2" [placeholder]="billing_form_errors.Address2_string">
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="billing_address.City" [placeholder]="billing_form_errors.City_string" [class.error]="billing_form_errors.City">
+                <select name="states" [(ngModel)]="billing_address.State" [class.error]="billing_form_errors.State">
+                  <option *ngFor="let state of states" [value]="state.key" [disabled]="state.disabled">{{state.value}}</option>
+                </select>
+              </div>
+              <div>
+                <input type="text" [(ngModel)]="billing_address.Zip" [placeholder]="billing_form_errors.Zip_string" [class.error]="billing_form_errors.Zip">
+              </div>
+              <button class="add_address top-20" (click)="onSaveBillAddress()">Save Address</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-right">
+          <div>
+            <h3>Purchase Order Number</h3>
+            <div>
+              <input type="text" placeholder="Enter PO#" [(ngModel)]="po_input" (keyup)="enterPONumber($event.target.value)">
+            </div>
+          </div>
+          <br>
+          <div class="billing_method_form">
+            <form>
+              <h3>Choose A Billing Method</h3>
+              <div *ngIf="!has_custom_product">
+                <input id="billing-method-paypal" type="radio" name="payment_type" value="PayPal" (change)="onSelectBillMethod($event.target.value)" [checked]="payment_type === 'PayPal'">
+                <label class="billing_opt_label" for="billing-method-paypal">Paypal</label>
+              </div>
+              <div *ngIf="!has_custom_product">
+                <input id="billing-method-cc" type="radio" name="payment_type" value="Stripe" (change)="onSelectBillMethod($event.target.value)" [checked]="payment_type === 'Stripe'">
+                <label class="billing_opt_label" for="billing-method-cc">Credit Card</label>
+              </div>
+              <div>
+                <input id="billing-method-terms" type="radio" name="payment_type" value="Terms" (change)="onSelectBillMethod($event.target.value)" [checked]="payment_type === 'Terms'">
+                <label class="billing_opt_label" for="billing-method-terms">Payment Terms With Kenco</label>
+              </div>
+              <div *ngIf="!has_custom_product">
+                <input id="billing-method-contact" type="radio" name="payment_type" value="Contact" (change)="onSelectBillMethod($event.target.value)" [checked]="payment_type === 'Contact'">
+                <label class="billing_opt_label" for="billing-method-contact">Kenco Will Contact You for Payment</label>
+              </div>
+              <div>
+                <p *ngIf="payment_type_error" class="error">{{payment_type_error_string}}</p>
+                <button class="use_address top-20" (click)="setPaymentMethod()">Review Order</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="step-4" [class.completed]="review_complete && isAuth()" [class.active]="billing_complete && isAuth() && !cart_complete && checkout.OrderSummary" [class.disabled]="!billing_complete || cart_complete || !checkout.OrderSummary">
+      <div class="panel-heading">
+        <h2><span class="step"><span>4</span></span>Review Order</h2>
+      </div>
+      <div class="panel-body clearfix" [ngClass]="{show: showReviewPanel, hide: hideReviewPanel}">
+        <table class="order-summary">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price</th>
+              <th>Total Price</th>
+              <th *ngIf="user_details_object.AllowTaxExempt" style="text-align: center">Tax Exempt</th>
+            </tr>
+          </thead>
+          <tbody *ngIf="checkout.OrderSummary">
+            <tr *ngFor="let review_cart_item of checkout.OrderSummary.Cart_Items; let item_idx = index">
+              <td>
+                <a [href]="review_cart_item.Link" class="item-title">
+                  {{review_cart_item.Title}}
+                  <span class="item-desc">
+                    {{review_cart_item.Description}}
+                  </span>
+                </a>
+              </td>
+              <td class="item-qty">
+                {{review_cart_item.Qty}}
+              </td>
+              <td class="item-unit-price">
+                {{review_cart_item.Unit_Price | currency:'USD':true:'.2-2'}}
+              </td>
+              <td class="item-sub-price">
+                {{review_cart_item.Sub_Total | currency:'USD':true:'.2-2'}}
+              </td>
+              <td *ngIf="user_details_object.AllowTaxExempt" class="item-tax-exempt" style="text-align: center">
+                <input type="checkbox" disabled [value]="review_cart_item.ItemId" [checked]="review_cart_item.IsTaxExempt">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="clearfix">
+          <table class="order-summary-total">
+            <tbody *ngIf="checkout.OrderSummary">
+              <tr>
+                <th>Subtotal</th>
+                <td>{{checkout.OrderSummary.SubTotal | currency:'USD':true:'.2-2'}}</td>
+              </tr>
+              <tr *ngIf="display_coupon_code">
+                <th>Discount</th>
+                <td>
+                  <span>{{checkout.OrderSummary.CouponDiscountText}}</span>
+                </td>
+              </tr>
+              <tr>
+                <th>Shipping</th>
+                <td>
+                  <span [class.value-na]="checkout.OrderSummary.ShippingFee <= 0">{{checkout.OrderSummary.ShippingText}}</span>
+                </td>
+              </tr>
+              <tr *ngIf="checkout.OrderSummary.ShowImportFeePlaceHolder">
+                <th>Import Fees</th>
+                <td>
+                  <span>{{checkout.OrderSummary.ImportFeeText}}</span>
+                </td>
+              </tr>
+              <tr>
+                <th>Tax</th>
+                <td>
+                  <span [class.value-na]="checkout.OrderSummary.TaxRate <= 0">{{checkout.OrderSummary.TaxText}}</span>
+                </td>
+              </tr>
+              <tr>
+                <th *ngIf="!has_custom_product">Total</th>
+                <th *ngIf="has_custom_product">Estimated Total</th>
+                <td>
+                  <span [class.value-na]="checkout.Total <= 0">{{checkout.OrderSummary.TotalText}}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <br>
+          <div *ngIf="isReturnCustomerAuth()" style="display: inline-block; vertical-align: top; width: 15%">
+            <h3>Shipping To:</h3>
+            <p><strong>{{selected_shipping.address.FName}} {{selected_shipping.address.LName}}</strong></p>
+            <p>{{selected_shipping.address.Company}}</p>
+            <p>{{selected_shipping.address.Address1}}</p>
+            <p>{{selected_shipping.address.Address2}}</p>
+            <p>{{selected_shipping.address.City}}, {{selected_shipping.address.State}} {{selected_shipping.address.Zip}}</p>
+          </div>
+          <div *ngIf="isGuestCustomerAuth()" style="display: inline-block; vertical-align: top; width: 15%">
+            <h3>Shipping To:</h3>
+            <p><strong>{{guestShippingAddress.FName}} {{guestShippingAddress.LName}}</strong></p>
+            <p>{{guestShippingAddress.Company}}</p>
+            <p>{{guestShippingAddress.Address1}}</p>
+            <p>{{guestShippingAddress.Address2}}</p>
+            <p>{{guestShippingAddress.City}}, {{guestShippingAddress.State}} {{guestShippingAddress.Zip}}</p>
+          </div>
+          <div style="display: inline-block; vertical-align: top; width: 15%">
+            <h3>Billing To:</h3>
+            <p><strong>{{billing_address.FName}} {{billing_address.LName}}</strong></p>
+            <p>{{billing_address.Company}}</p>
+            <p>{{billing_address.Address1}}</p>
+            <p>{{billing_address.Address2}}</p>
+            <p>{{billing_address.City}}, {{billing_address.State}} {{billing_address.Zip}}</p>
+            <p>{{billing_address.ContactPhone | phonenumber}} <span *ngIf="billing_address.ContactPhoneExt">ext. {{billing_address.ContactPhoneExt}}</span></p>
+            <p>{{billing_address.Phone | phonenumber}} <span *ngIf="billing_address.Phone_Ext">ext. {{billing_address.Phone_Ext}}</span></p>
+          </div>
+          <div style="display: inline-block; vertical-align: top;">
+            <h3>Comments</h3>
+            <textarea class="order_comments" placeholder="Comments" cols="30" rows="5" [(ngModel)]="order_notes" [disabled]="review_complete"></textarea>
+          </div>
+        </div>
+
+        <div class="terms-conditions">
+          <input type="checkbox" (change)="checkComTerms()" [checked]="isComTermsChecked === true" [disabled]="review_complete">By Checking This Box, I Acknowledge That I Have Read and Agree to Kenco's <span class="terms_link" (click)="comTerms()">Commercial Terms</span>
+          <br>
+          <input type="checkbox" (change)="checkToU()" [checked]="isToUChecked === true" [disabled]="review_complete">By Checking This Box, I Acknowledge That I Have Read and Agree to Kenco's <span class="terms_link" (click)="termsOfUse()">Terms of Use</span>
+        </div>
+        <div *ngIf="show_review_complete_btn && !review_complete" class="review_button">
+          <div *ngIf="record_order_errors.isOrderError">
+            <p class="order_error">{{record_order_errors.Error}}</p>
+            <p class="order_error">{{record_order_errors.Description}}</p>
+          </div>
+          <button class="use_address top-20" (click)="onRecordOrder()" [disabled]="review_complete">{{record_order_btn}}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="step-5" [class.completed]="cart_complete" [class.active]="show_review_complete_btn && review_complete && isAuth() && checkout.OrderSummary" [class.disabled]="!show_review_complete_btn || !review_complete || !checkout.OrderSummary">
+      <div class="panel-heading">
+        <h2><span class="step"><span>5</span></span>{{payment_details_header}}</h2>
+      </div>
+      <div class="panel-body clearfix" [ngClass]="{show: showPaymentPanel, hide: hidePaymentPanel}">
+        <div class="panel-left">
+          <div *ngIf="on_submit_order" class="payment_panel">
+            <p>Recording Order</p>
+          </div>
+          <div *ngIf="payment_type === 'PayPal' && !is_payment_error && !on_submit_order" class="payment_panel paypal_login">
+            <h3>{{order_confirm_header}}</h3>
+            <p>Order # <span class="order_success">{{order_confirm_number}}</span></p>
+            <p>Total: {{order_total}}</p>
+            <div>
+              <a [href]="continue_button_url" type="submit" class="add_address top-20">{{continue_button_text}}</a>
+            </div>
+          </div>
+          <div *ngIf="payment_type === 'Stripe' && !is_payment_error && !on_submit_payment && !on_submit_order" class="payment_panel payment_cc">
+            <h3>{{order_confirm_header}}</h3>
+            <p>Order # <span class="order_success">{{order_confirm_number}}</span></p>
+            <p>Total: {{order_total}}</p>
+            <form *ngIf="!on_order_success" (ngSubmit)="onSubmitStripePayment()">
+              <div>
+                <input type="text" size="20" placeholder="Credit Card Number" [(ngModel)]="stripe_card_number" (keyup)="numberChange($event.target.value)" [class.input_success]="stripe_success" [class.input_error]="stripe_param === 'number'">
+              </div>
+
+              <div>
+                <input type="text" size="4" placeholder="CVC" [(ngModel)]="stripe_card_cvc" (keyup)="cvcChange($event.target.value)" [class.input_success]="stripe_success" [class.input_error]="stripe_param === 'cvc'">
+              </div>
+
+              <div>
+                <h3>Expiration</h3>
+                <select name="exp-month" [(ngModel)]="stripe_card_exp_month" (keyup)="monthChange($event.target.value)" (change)="monthChange($event.target.value)" [class.input_success]="stripe_success" [class.input_error]="stripe_param === 'exp_month'">
+                  <option value="00" disabled>Month</option>
+                  <option value="01">01</option>
+                  <option value="02">02</option>
+                  <option value="03">03</option>
+                  <option value="04">04</option>
+                  <option value="05">05</option>
+                  <option value="06">06</option>
+                  <option value="07">07</option>
+                  <option value="08">08</option>
+                  <option value="09">09</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                </select>
+
+                <select name="exp-year" [(ngModel)]="stripe_card_exp_year" (keyup)="yearChange($event.target.value)" (change)="yearChange($event.target.value)" [class.input_success]="stripe_success" [class.input_error]="stripe_param === 'exp_year'">
+                  <option value="00">Year</option>
+                  <option *ngFor="let year of exp_year_array" [value]="year">{{year}}</option>
+                </select>
+              </div>
+
+              <div>
+                <button type="submit" class="add_address" [disabled]="stripe_error">Submit Order</button>
+              </div>
+            </form>
+            <div *ngIf="!on_order_success">
+              <button class="add_address" (click)="onBailOutOfStripe()">Finalize Order & Contact Me For Payment</button>
+            </div>
+            <div *ngIf="on_order_success">
+              <a [href]="continue_button_url" class="add_address top-20">{{continue_button_text}}</a>
+            </div>
+          </div>
+          <div *ngIf="payment_type === 'Terms' && !is_payment_error && !on_submit_order" class="payment_panel payment_terms">
+            <h3>{{order_confirm_header}}</h3>
+            <p>Order # <span class="order_success">{{order_confirm_number}}</span></p>
+            <p>Total: {{order_total}}</p>
+            <div>
+              <a [href]="continue_button_url" type="submit" class="add_address top-20">{{continue_button_text}}</a>
+            </div>
+          </div>
+          <div *ngIf="payment_type === 'Contact' && !is_payment_error && !on_submit_order" class="payment_panel payment_contact">
+            <h3>{{order_confirm_header}}</h3>
+            <p>Order # <span class="order_success">{{order_confirm_number}}</span></p>
+            <p>Total: {{order_total}}</p>
+            <div>
+              <a [href]="continue_button_url" class="add_address top-20">{{continue_button_text}}</a>
+            </div>
+          </div>
+          <div *ngIf="on_submit_payment" class="payment_panel">
+            <p>Submitting Payment</p>
+          </div>
+          <div *ngIf="is_payment_error && !on_submit_payment" class="payment_panel">
+            <h3 class="order_error">{{payment_error_object.Error}}</h3>
+            <h3 *ngIf="!payment_error_object.Error" class="order_error">There was an error with your order.</h3>
+            <h3 class="order_error">{{payment_error_object.Description}}</h3>
+            <h3 *ngIf="!payment_error_object.Description" class="order_error">Please call 800-537-3336 to complete your order.</h3>
+            <p>Order # <span class="order_error">{{order_confirm_number}}</span></p>
+            <p>Total: {{order_total}}</p>
+            <!--<p class="order_error"></p>-->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

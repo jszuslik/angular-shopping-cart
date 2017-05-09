@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Kenco Shopping Cart</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="publishable_key" content="pk_test_KhReoivXZ3oamKT0qfb3Jfkc">
+  <link rel="stylesheet" href="/cart_test/styles.css">
+
+  <!-- 1. Load libraries -->
+  <!-- Polyfill(s) for older browsers -->
+  <script src="/cart_test/node_modules/core-js/client/shim.min.js"></script>
+  <script src="/cart_test/node_modules/zone.js/dist/zone.js"></script>
+  <script src="/cart_test/node_modules/reflect-metadata/Reflect.js"></script>
+  <script src="/cart_test/dist/bundle.js"></script>
+  <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+
+  <!-- Web Fonts -->
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,400italic,600,600italic,700italic,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Oswald:400,300,700' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+</head>
+
+<!-- 3. Display the application -->
+<body>
+<checkout-app>
+  <div class="cart-loading-img">
+    <img src="/cart/img/InternetSlowdown_Day.gif" alt="Loading Cart">
+    <p>If This is your first time here loading may take a moment...</p>
+  </div>
+</checkout-app>
+</body>
+</html>

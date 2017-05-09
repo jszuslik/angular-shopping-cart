@@ -1,0 +1,90 @@
+export class Checkout {
+    OrderSummary: {
+        CouponDiscount: number;
+        CouponDiscountText: string;
+        HasCustomProducts: boolean;
+        HasCustomProductsUserEntered: boolean;
+        ImportFee: number;
+        ImportFeeText: string;
+        ShippingFee: number;
+        ShippingText: string;
+        ShowCartFreeShip: boolean;
+        ShowCouponPlaceHolder: boolean;
+        ShowFreeShipQualifNote: boolean;
+        ShowImportFeePlaceHolder: boolean;
+        SubTotal: number;
+        SubTotalText: string;
+        TaxExemptAcct: boolean;
+        TaxRate: number;
+        TaxText: string;
+        TaxableShippingFee: number;
+        Total: number;
+        TotalText: string;
+        Cart_Items: [{
+            Description: string;
+            Id: number;
+            ImageURL: string;
+            ItemId: string;
+            Link: string;
+            Qty: number;
+            SKU: string;
+            ShowFreeShipQualifNote: boolean;
+            Sub_Total: number;
+            Sub_Wt_Total: number;
+            Title: string;
+            Unit_Price: number;
+            Unit_Wt: number;
+        }];
+        Error: string;
+    };
+    Coupon: {
+        CouponCode: string;
+        CouponDefaultVisible: boolean;
+        CouponAddEditButtonText: string;
+        CouponAddEditButtonVisible: boolean;
+        CouponEditVisible: boolean;
+        CouponDeleteVisible: boolean;
+        CouponErrorText: string;
+        CouponErrorVisible: boolean;
+        DiscountLog: string;
+    };
+    ShippingOptions: {
+        ShippingAddress: {
+            Address1: string;
+            Address2: string;
+            AddressType: string;
+            City: string;
+            Company: string;
+            CustId: number;
+            FName: string;
+            IsInactive: boolean;
+            LName: string;
+            Orders: Array<any>;
+            Phone: string;
+            Phone_Ext: string;
+            ShipToId: number;
+            State: string;
+            Zip: string;
+        };
+        SelectedShippingOption: number;
+        SelectedShippingOptionText: string;
+        ContainerCount: number;
+        ShippingOptions: Array<any>;
+        ShippingOptionVisible: boolean;
+        ShippingOptionsVisible: boolean;
+        OptionsErrorText: string;
+        OptionsErrorVisible: boolean;
+        SelectedBillToService: {
+            ServiceCarrier: string;
+            ServiceName: string;
+            BillToAccount: string;
+        };
+    };
+    NoShippingOptionsVisible: boolean;
+    CheckoutErrorVisible: boolean;
+    BillToMissingErrorVisible: boolean;
+    ShipToNotSelectedErrorVisible: boolean;
+    ShipRateNotSelectedErrorVisible: boolean;
+    Error: string;
+    Description: string;
+}
